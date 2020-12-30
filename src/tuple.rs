@@ -1,6 +1,6 @@
 use std::ops::{Add, AddAssign, Mul};
 
-use crate::{Graph, GraphExec, GraphExecTrain};
+use crate::{derivative::DerivativeTesting, Graph, GraphExec, GraphExecTrain};
 use ndarray::ScalarOperand;
 use rand::Rng;
 
@@ -15,21 +15,23 @@ impl<T, U> Tuple2<T, U> {
     }
 }
 
-impl<G0, G1, F> Graph<F> for Tuple2<G0, G1>
+impl<I, G0, G1, F> Graph<F, I> for Tuple2<G0, G1>
 where
-    G0: Graph<F>,
-    G1: Graph<F>,
+    G0: Graph<F, I>,
+    G1: Graph<F, G0::OutputShape>,
 {
     type State = Tuple2<G0::State, G1::State>;
+    type OutputShape = G1::OutputShape;
 
-    fn get_input_size(&self) -> usize {
-        self.0.get_input_size()
+    fn get_output_shape(&self) -> Self::OutputShape {
+        self.1.get_output_shape()
     }
 
-    fn init_with_random(self, rng: &mut impl Rng, output_size: usize) -> Self::State {
+    fn init_with_random(self, rng: &mut impl Rng, input_shape: I) -> Self::State {
+        let s0 = self.0.get_output_shape();
         Tuple2(
-            self.0.init_with_random(rng, self.1.get_input_size()),
-            self.1.init_with_random(rng, output_size),
+            self.0.init_with_random(rng, input_shape),
+            self.1.init_with_random(rng, s0),
         )
     }
 }
@@ -161,6 +163,33 @@ where
 {
     fn eq(&self, rhs: &Tuple2<T2, U2>) -> bool {
         self.0 == rhs.0 && self.1 == rhs.1
+    }
+}
+
+impl<F, T, U> DerivativeTesting<F> for Tuple2<T, U>
+where
+    T: DerivativeTesting<F>,
+    U: DerivativeTesting<F>,
+{
+    fn len(&self) -> usize {
+        self.0.len() + self.1.len()
+    }
+    fn get(&self, i: usize) -> F {
+        let l = self.0.len();
+        if i < l {
+            self.0.get(i)
+        } else {
+            self.1.get(i - l)
+        }
+    }
+
+    fn set(&mut self, i: usize, f: F) {
+        let l = self.0.len();
+        if i < l {
+            self.0.set(i, f);
+        } else {
+            self.1.set(i - l, f);
+        }
     }
 }
 

@@ -4,8 +4,12 @@ use std::mem::MaybeUninit;
 
 use indicatif::{ProgressBar, ProgressStyle};
 use linear_networks::{
-    activation::sigmoid::Sigmoid, cost::MSE, dense::Dense, initialisers::Xavier, optimise::SGD,
-    tuple, Graph, Train, GraphExec,
+    activation::{relu::Relu, sigmoid::Sigmoid},
+    cost::MSE,
+    dense::Dense,
+    initialisers::Xavier,
+    optimise::{sgd::SGD, Train},
+    tuple, Graph, GraphExec,
 };
 use ndarray::Array2;
 use rand::prelude::*;
@@ -18,11 +22,11 @@ fn main() {
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
     let network: _ = tuple![
-        Dense::new(28 * 28, Xavier).with_activation(Sigmoid),
-        Dense::new(16, Xavier).with_activation(Sigmoid),
-        Dense::new(16, Xavier).with_activation(Sigmoid)
+        Dense::new(16, Xavier).with_activation(Relu),
+        Dense::new(16, Xavier).with_activation(Relu),
+        Dense::new(10, Xavier).with_activation(Sigmoid)
     ]
-    .init(10);
+    .input_shape(28 * 28);
 
     // New trainer with mean squared error cost function and
     // stochastic gradient descent optimisation (alpha=0.1)
@@ -68,8 +72,6 @@ fn main() {
     let output = network.exec(&input);
     println!("output: {:?}", output);
     println!("expected: {:?}", expected);
-
-
 }
 
 fn make_bacthes(length: usize, batch_size: usize) -> Vec<Vec<usize>> {

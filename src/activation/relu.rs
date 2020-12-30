@@ -5,38 +5,38 @@ use num_traits::Float;
 use super::{Activation, Linear};
 
 #[derive(Debug, Copy, Clone)]
-pub struct Sigmoid;
-impl<G> Activation<G> for Sigmoid {
+pub struct Relu;
+impl<G> Activation<G> for Relu {
     fn into_activation(self, g: G) -> Linear<G, Self> {
         Linear::new(g, self)
     }
 }
 
-impl<F, D> GraphExec<Array<F, D>> for Sigmoid
+impl<F, D> GraphExec<Array<F, D>> for Relu
 where
     F: LinalgScalar + Float,
     D: Dimension,
 {
     type Output = Array<F, D>;
     fn exec(&self, input: &Array<F, D>) -> Self::Output {
-        let one = F::one();
-        input.mapv(|x| (one / (one + (-x).exp())))
+        let zero = F::zero();
+        input.mapv(|x| x.max(zero))
     }
 }
 
-impl<F, D> GraphExecTrain<Array<F, D>> for Sigmoid
+impl<F, D> GraphExecTrain<Array<F, D>> for Relu
 where
     F: LinalgScalar + ScalarOperand + Float,
     D: Dimension,
 {
-    type State = Self::Output;
+    type State = (Array<F, D>, Self::Output);
     fn forward(&self, input: &Array<F, D>) -> (Self::State, Self::Output) {
         let output = self.exec(input);
-        (output.clone(), output)
+        ((input.clone(), output.clone()), output)
     }
 
-    fn back(&self, output: Self::State, d_output: Self::Output) -> (Array<F, D>, Self) {
-        let d_input: Array<F, D> = d_output * &output * (-output + F::one());
+    fn back(&self, (input, output): Self::State, d_output: Self::Output) -> (Array<F, D>, Self) {
+        let d_input: Array<F, D> = output / input * d_output;
         (d_input, Self)
     }
 }

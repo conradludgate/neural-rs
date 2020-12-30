@@ -1,45 +1,46 @@
 use std::ops::{Add, AddAssign, Mul};
 
-use crate::{Graph, GraphExec, GraphExecTrain, activation::Activation, initialisers::Initialiser};
+use crate::{Graph, GraphExec, GraphExecTrain, activation::{Activation, Linear}, derivative::DerivativeTesting, initialisers::Initialiser};
 use ndarray::{Array1, Array2, Axis, LinalgScalar, ScalarOperand};
-use num_traits::FromPrimitive;
+use num_traits::{FromPrimitive};
 use rand::{distributions::Distribution, Rng};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Dense<I> {
-    input_size: usize,
+    output_size: usize,
     initialiser: I,
 }
 
 impl<I> Dense<I> {
-    pub fn new(input_size: usize, initialiser: I) -> Self {
+    pub fn new(output_size: usize, initialiser: I) -> Self {
         Dense {
-            input_size,
+            output_size,
             initialiser,
         }
     }
-    pub fn with_activation<A: Activation<Self>>(self, a: A) -> A::Activation {
+    pub fn with_activation<A: Activation<Self>>(self, a: A) -> Linear<Self, A> {
         a.into_activation(self)
     }
 }
 
-impl<I, F> Graph<F> for Dense<I>
+impl<I, F> Graph<F, usize> for Dense<I>
 where
     I: Initialiser<F, (usize, usize)>,
 {
     type State = DenseState<F>;
+    type OutputShape = usize;
 
-    fn get_input_size(&self) -> usize {
-        self.input_size
+    fn get_output_shape(&self) -> usize {
+        self.output_size
     }
 
-    fn init_with_random(self, rng: &mut impl Rng, output_size: usize) -> Self::State {
+    fn init_with_random(self, rng: &mut impl Rng, input_size: usize) -> Self::State {
         let d = self
             .initialiser
-            .into_distribution((self.input_size, output_size));
+            .into_distribution((input_size, self.output_size));
 
-        let w = Array2::from_shape_simple_fn((output_size, self.input_size), || d.sample(rng));
-        let b = Array1::from_shape_simple_fn(output_size, || d.sample(rng));
+        let w = Array2::from_shape_simple_fn((self.output_size, input_size), || d.sample(rng));
+        let b = Array1::from_shape_simple_fn(self.output_size, || d.sample(rng));
 
         DenseState { w, b }
     }
@@ -82,29 +83,30 @@ where
         (input.clone(), self.exec(input))
     }
 
-    fn back(&self, state: Self::State, d_output: Self::Output) -> (Array1<F>, Self) {
+    fn back(&self, input: Self::State, d_output: Self::Output) -> (Array1<F>, Self) {
         let di = self.w.t().dot(&d_output);
         let db = d_output.clone();
         let dw = d_output
             .insert_axis(Axis(1))
-            .dot(&state.insert_axis(Axis(0)));
+            .dot(&input.insert_axis(Axis(0)));
         (di, DenseState { w: dw, b: db })
     }
 }
 
 impl<F> GraphExecTrain<Array2<F>> for DenseState<F>
 where
-    F: LinalgScalar + FromPrimitive,
+    F: LinalgScalar + FromPrimitive + ScalarOperand,
 {
     type State = Array2<F>;
     fn forward(&self, input: &Array2<F>) -> (Self::State, Self::Output) {
         (input.clone(), self.exec(input))
     }
 
-    fn back(&self, state: Self::State, d_output: Self::Output) -> (Array2<F>, Self) {
+    fn back(&self, input: Self::State, d_output: Self::Output) -> (Array2<F>, Self) {
+        let batch_size = F::from_usize(d_output.raw_dim()[1]).unwrap();
         let di = self.w.t().dot(&d_output);
         let db = d_output.mean_axis(Axis(1)).unwrap();
-        let dw = d_output.dot(&state.t());
+        let dw = d_output.dot(&input.t()) / batch_size;
         (di, DenseState { w: dw, b: db })
     }
 }
@@ -137,8 +139,35 @@ where
     type Output = DenseState<F>;
     fn mul(self, rhs: F) -> DenseState<F> {
         DenseState {
-            w: self.w + rhs,
-            b: self.b + rhs,
+            w: self.w * rhs,
+            b: self.b * rhs,
+        }
+    }
+}
+
+impl<F> DerivativeTesting<F> for DenseState<F>
+where
+    F: LinalgScalar,
+{
+    fn len(&self) -> usize {
+        self.w.len() + self.b.len()
+    }
+
+    fn get(&self, i: usize) -> F {
+        let l = self.w.len();
+        if i < l {
+            self.w.as_slice().unwrap()[i]
+        } else {
+            self.b[i - l]
+        }
+    }
+
+    fn set(&mut self, i: usize, f: F) {
+        let l = self.w.len();
+        if i < l {
+            self.w.as_slice_mut().unwrap()[i] = f;
+        } else {
+            self.b[i - l] = f;
         }
     }
 }
