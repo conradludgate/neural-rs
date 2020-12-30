@@ -1,20 +1,20 @@
-mod parse;
-
 use std::mem::MaybeUninit;
 
-use indicatif::{ProgressBar, ProgressStyle};
 use linear_networks::{
     activation::{relu::Relu, sigmoid::Sigmoid},
     cost::MSE,
     dense::Dense,
     initialisers::Xavier,
-    optimise::{sgd::SGD, Train},
-    tuple, Graph, GraphExec,
+    optimise::{adam::Adam, sgd::SGD, Train},
+    tuple, Graph,
 };
 use ndarray::Array2;
 use rand::prelude::*;
+use std::sync::mpsc;
 
-fn main() {
+use crate::{event::Event, parse};
+
+pub fn train(tx: mpsc::Sender<Event>) {
     // Load MNIST data set
     let data = parse::load_data();
 
@@ -28,50 +28,26 @@ fn main() {
     ]
     .input_shape(28 * 28);
 
-    // New trainer with mean squared error cost function and
-    // stochastic gradient descent optimisation (alpha=0.1)
-    let mut trainer: _ = Train::new(network, MSE, SGD::new(0.01));
-
-    let mut costs = vec![];
+    // New trainer with mean squared error cost function
+    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, &network);
+    let mut trainer: _ = Train::new(network, MSE, optimiser);
 
     const BATCH_SIZE: usize = 120;
-    let total_batches = ((data.training.images.len() + BATCH_SIZE - 1) / BATCH_SIZE) as u64;
 
-    let pb = ProgressBar::new(total_batches)
-        .with_style(ProgressStyle::default_bar().template("{msg}\n{wide_bar} {pos}/{len}"));
-    pb.set_message(&format!("Training step {}", 1));
-
-    for _ in 0..20 {
+    for _ in 0.. {
         let batches = make_bacthes(data.training.images.len(), BATCH_SIZE);
-        let len = batches.len() as f32;
+        let n = batches.len();
+        let len = n as f64;
         let mut total_cost = 0.0;
 
-        for batch in batches {
+        for (i, batch) in batches.into_iter().enumerate() {
             let (input, expected) = process_batch(&data.training, &batch);
             total_cost += trainer.train(&input, &expected);
 
-            pb.inc(1);
+            tx.send(Event::Step(i, n)).unwrap();
         }
-
-        costs.push(total_cost / len);
-
-        pb.reset();
-        pb.set_message(&format!(
-            "Training step {}. Previous cost: {:?}",
-            costs.len() + 1,
-            total_cost / len
-        ));
+        tx.send(Event::EpochComplete(total_cost / len)).unwrap();
     }
-
-    let network = trainer.into_inner();
-
-    println!("network: {:?}", network);
-
-    let (input, expected) = process_batch(&data.testing, &vec![0]);
-
-    let output = network.exec(&input);
-    println!("output: {:?}", output);
-    println!("expected: {:?}", expected);
 }
 
 fn make_bacthes(length: usize, batch_size: usize) -> Vec<Vec<usize>> {
@@ -89,7 +65,7 @@ fn make_bacthes(length: usize, batch_size: usize) -> Vec<Vec<usize>> {
     batches
 }
 
-fn process_batch(data: &parse::DataSet, batch: &Vec<usize>) -> (Array2<f32>, Array2<f32>) {
+fn process_batch(data: &parse::DataSet, batch: &Vec<usize>) -> (Array2<f64>, Array2<f64>) {
     unsafe {
         let mut input = Array2::maybe_uninit((28 * 28, batch.len()));
         let mut expected = Array2::maybe_uninit((10, batch.len()));
@@ -97,7 +73,7 @@ fn process_batch(data: &parse::DataSet, batch: &Vec<usize>) -> (Array2<f32>, Arr
         for (i, &j) in batch.iter().enumerate() {
             let image = &data.images[j];
             for (j, &b) in image.iter().enumerate() {
-                *input[(j, i)].as_mut_ptr() = (b as f32) / 255.0;
+                *input[(j, i)].as_mut_ptr() = (b as f64) / 255.0;
             }
             expected.column_mut(i).fill(MaybeUninit::new(0.0));
             *expected[(data.labels[j] as usize, i)].as_mut_ptr() = 1.0;

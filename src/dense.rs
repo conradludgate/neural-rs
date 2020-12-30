@@ -1,6 +1,4 @@
-use std::ops::{Add, AddAssign, Mul};
-
-use crate::{Graph, GraphExec, GraphExecTrain, activation::{Activation, Linear}, derivative::DerivativeTesting, initialisers::Initialiser};
+use crate::{Graph, GraphExec, GraphExecTrain, Mappable, activation::{Activation, Linear}, initialisers::Initialiser};
 use ndarray::{Array1, Array2, Axis, LinalgScalar, ScalarOperand};
 use num_traits::{FromPrimitive};
 use rand::{distributions::Distribution, Rng};
@@ -111,63 +109,81 @@ where
     }
 }
 
-impl<F> Add<DenseState<F>> for DenseState<F>
-where
-    F: LinalgScalar,
-{
-    type Output = DenseState<F>;
-    fn add(self, rhs: DenseState<F>) -> DenseState<F> {
-        DenseState {
-            w: self.w + rhs.w,
-            b: self.b + rhs.b,
-        }
-    }
-}
-impl<F> AddAssign<DenseState<F>> for DenseState<F>
-where
-    F: LinalgScalar + AddAssign<F>,
-{
-    fn add_assign(&mut self, rhs: DenseState<F>) {
-        self.w += &rhs.w;
-        self.b += &rhs.b;
-    }
-}
-impl<F> Mul<F> for DenseState<F>
-where
-    F: LinalgScalar + ScalarOperand,
-{
-    type Output = DenseState<F>;
-    fn mul(self, rhs: F) -> DenseState<F> {
-        DenseState {
-            w: self.w * rhs,
-            b: self.b * rhs,
-        }
-    }
-}
+// impl<F> Add<DenseState<F>> for DenseState<F>
+// where
+//     F: LinalgScalar,
+// {
+//     type Output = DenseState<F>;
+//     fn add(self, rhs: DenseState<F>) -> DenseState<F> {
+//         DenseState {
+//             w: self.w + rhs.w,
+//             b: self.b + rhs.b,
+//         }
+//     }
+// }
+// impl<F> AddAssign<DenseState<F>> for DenseState<F>
+// where
+//     F: LinalgScalar + AddAssign<F>,
+// {
+//     fn add_assign(&mut self, rhs: DenseState<F>) {
+//         self.w += &rhs.w;
+//         self.b += &rhs.b;
+//     }
+// }
+// impl<F> Mul<F> for DenseState<F>
+// where
+//     F: LinalgScalar + ScalarOperand,
+// {
+//     type Output = DenseState<F>;
+//     fn mul(self, rhs: F) -> DenseState<F> {
+//         DenseState {
+//             w: self.w * rhs,
+//             b: self.b * rhs,
+//         }
+//     }
+// }
 
-impl<F> DerivativeTesting<F> for DenseState<F>
-where
-    F: LinalgScalar,
-{
-    fn len(&self) -> usize {
-        self.w.len() + self.b.len()
-    }
+// impl<F> DerivativeTesting<F> for DenseState<F>
+// where
+//     F: LinalgScalar,
+// {
+//     fn len(&self) -> usize {
+//         self.w.len() + self.b.len()
+//     }
 
-    fn get(&self, i: usize) -> F {
-        let l = self.w.len();
-        if i < l {
-            self.w.as_slice().unwrap()[i]
-        } else {
-            self.b[i - l]
-        }
-    }
+//     fn get(&self, i: usize) -> F {
+//         let l = self.w.len();
+//         if i < l {
+//             self.w.as_slice().unwrap()[i]
+//         } else {
+//             self.b[i - l]
+//         }
+//     }
 
-    fn set(&mut self, i: usize, f: F) {
-        let l = self.w.len();
-        if i < l {
-            self.w.as_slice_mut().unwrap()[i] = f;
-        } else {
-            self.b[i - l] = f;
-        }
+//     fn set(&mut self, i: usize, f: F) {
+//         let l = self.w.len();
+//         if i < l {
+//             self.w.as_slice_mut().unwrap()[i] = f;
+//         } else {
+//             self.b[i - l] = f;
+//         }
+//     }
+// }
+
+
+impl<T> Mappable<T> for DenseState<T> {
+    fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self {
+        let DenseState { w, b } = self;
+        let w = w.map(f.clone());
+        let b = b.map(f);
+        DenseState{w, b}
+    }
+    fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F) {
+        self.w.map_mut(f.clone());
+        self.b.map_mut(f);
+    }
+    fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F) {
+        self.w.zip_mut_with(&rhs.w, f.clone());
+        self.b.zip_mut_with(&rhs.b, f);
     }
 }

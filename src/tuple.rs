@@ -1,7 +1,4 @@
-use std::ops::{Add, AddAssign, Mul};
-
-use crate::{derivative::DerivativeTesting, Graph, GraphExec, GraphExecTrain};
-use ndarray::ScalarOperand;
+use crate::{Graph, GraphExec, GraphExecTrain, Mappable};
 use rand::Rng;
 
 /// Tuple2<T, U> is essentially (T, U) but redefined to allow implementing more traits on it.
@@ -68,6 +65,26 @@ where
     }
 }
 
+impl<S, T, U> Mappable<S> for Tuple2<T, U>
+where
+    T: Mappable<S>,
+    U: Mappable<S>,
+{
+    fn map<F: FnMut(&S) -> S + Clone>(&self, f: F) -> Self {
+        let t = self.0.map(f.clone());
+        let u = self.1.map(f);
+        Tuple2(t, u)
+    }
+    fn map_mut<F: FnMut(&mut S) + Clone>(&mut self, f: F) {
+        self.0.map_mut(f.clone());
+        self.1.map_mut(f);
+    }
+    fn map_mut_with<F: FnMut(&mut S, &S) + Clone>(&mut self, rhs: &Self, f: F) {
+        self.0.map_mut_with(&rhs.0, f.clone());
+        self.1.map_mut_with(&rhs.1, f);
+    }
+}
+
 /// Converts the provided values into a nested chain of [Tuple2]s.
 /// Works by taking each pair of expressions, converting them into a [Tuple2],
 /// Then pushing all of them into the macro recursively
@@ -115,47 +132,6 @@ macro_rules! tuple {
     };
 }
 
-impl<T1, U1, T2, U2> Add<Tuple2<T2, U2>> for Tuple2<T1, U1>
-where
-    T1: Add<T2>,
-    U1: Add<U2>,
-{
-    type Output = Tuple2<T1::Output, U1::Output>;
-    fn add(self, rhs: Tuple2<T2, U2>) -> Self::Output {
-        Tuple2(self.0 + rhs.0, self.1 + rhs.1)
-    }
-}
-impl<T1, U1, T2, U2> AddAssign<Tuple2<T2, U2>> for Tuple2<T1, U1>
-where
-    T1: AddAssign<T2>,
-    U1: AddAssign<U2>,
-{
-    fn add_assign(&mut self, rhs: Tuple2<T2, U2>) {
-        self.0 += rhs.0;
-        self.1 += rhs.1;
-    }
-}
-impl<T1, U1, T2, U2> Mul<Tuple2<T2, U2>> for Tuple2<T1, U1>
-where
-    T1: Mul<T2>,
-    U1: Mul<U2>,
-{
-    type Output = Tuple2<T1::Output, U1::Output>;
-    fn mul(self, rhs: Tuple2<T2, U2>) -> Self::Output {
-        Tuple2(self.0 * rhs.0, self.1 * rhs.1)
-    }
-}
-impl<T, U, S> Mul<S> for Tuple2<T, U>
-where
-    T: Mul<S>,
-    U: Mul<S>,
-    S: ScalarOperand + Clone,
-{
-    type Output = Tuple2<T::Output, U::Output>;
-    fn mul(self, rhs: S) -> Self::Output {
-        Tuple2(self.0 * rhs.clone(), self.1 * rhs)
-    }
-}
 impl<T1, U1, T2, U2> PartialEq<Tuple2<T2, U2>> for Tuple2<T1, U1>
 where
     T1: PartialEq<T2>,
@@ -163,33 +139,6 @@ where
 {
     fn eq(&self, rhs: &Tuple2<T2, U2>) -> bool {
         self.0 == rhs.0 && self.1 == rhs.1
-    }
-}
-
-impl<F, T, U> DerivativeTesting<F> for Tuple2<T, U>
-where
-    T: DerivativeTesting<F>,
-    U: DerivativeTesting<F>,
-{
-    fn len(&self) -> usize {
-        self.0.len() + self.1.len()
-    }
-    fn get(&self, i: usize) -> F {
-        let l = self.0.len();
-        if i < l {
-            self.0.get(i)
-        } else {
-            self.1.get(i - l)
-        }
-    }
-
-    fn set(&mut self, i: usize, f: F) {
-        let l = self.0.len();
-        if i < l {
-            self.0.set(i, f);
-        } else {
-            self.1.set(i - l, f);
-        }
     }
 }
 

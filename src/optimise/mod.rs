@@ -1,7 +1,8 @@
+pub mod adam;
 pub mod sgd;
-use std::ops::{Deref, DerefMut};
 
 use crate::{Cost, GraphExecTrain};
+use std::ops::{Deref, DerefMut};
 
 pub trait Optimiser<G> {
     fn optimise(&mut self, graph: &mut G, grads: G);

@@ -8,6 +8,12 @@ pub mod tuple;
 
 use rand::Rng;
 
+pub trait Mappable<T> {
+    fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self;
+    fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F);
+    fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F);
+}
+
 pub trait GraphExec<Input> {
     type Output;
 

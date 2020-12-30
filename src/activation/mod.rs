@@ -1,11 +1,8 @@
-use std::ops::{Add, AddAssign, Mul};
-
-use crate::{derivative::DerivativeTesting, Graph, GraphExec, GraphExecTrain};
-use ndarray::ScalarOperand;
+use crate::{Graph, GraphExec, GraphExecTrain, Mappable};
 use rand::Rng;
 
-pub mod sigmoid;
 pub mod relu;
+pub mod sigmoid;
 
 pub trait Activation<G>: Sized {
     fn into_activation(self, g: G) -> Linear<G, Self>;
@@ -75,72 +72,21 @@ where
     }
 }
 
-impl<T, U, L> Add<Linear<U, L>> for Linear<T, L>
+impl<T, G, L> Mappable<T> for Linear<G, L>
 where
-    T: Add<U>,
+    G: Mappable<T>,
+    L: Clone,
 {
-    type Output = Linear<T::Output, L>;
-    fn add(self, rhs: Linear<U, L>) -> Self::Output {
+    fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self {
         Linear {
-            graph: self.graph + rhs.graph,
-            linear: self.linear,
+            graph: self.graph.map(f),
+            linear: self.linear.clone(),
         }
     }
-}
-impl<T, U, L> AddAssign<Linear<U, L>> for Linear<T, L>
-where
-    T: AddAssign<U>,
-{
-    fn add_assign(&mut self, rhs: Linear<U, L>) {
-        self.graph += rhs.graph;
+    fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F) {
+        self.graph.map_mut(f)
     }
-}
-impl<T, U, L> Mul<Linear<U, L>> for Linear<T, L>
-where
-    T: Mul<U>,
-{
-    type Output = Linear<T::Output, L>;
-    fn mul(self, rhs: Linear<U, L>) -> Self::Output {
-        Linear {
-            graph: self.graph * rhs.graph,
-            linear: self.linear,
-        }
-    }
-}
-impl<T, L, S> Mul<S> for Linear<T, L>
-where
-    T: Mul<S>,
-    S: ScalarOperand,
-{
-    type Output = Linear<T::Output, L>;
-    fn mul(self, rhs: S) -> Self::Output {
-        Linear {
-            graph: self.graph * rhs,
-            linear: self.linear,
-        }
-    }
-}
-impl<T, U, L> PartialEq<Linear<U, L>> for Linear<T, L>
-where
-    T: PartialEq<U>,
-{
-    fn eq(&self, rhs: &Linear<U, L>) -> bool {
-        self.graph == rhs.graph
-    }
-}
-
-impl<F, G, L> DerivativeTesting<F> for Linear<G, L>
-where
-    G: DerivativeTesting<F>,
-{
-    fn len(&self) -> usize {
-        self.graph.len()
-    }
-    fn get(&self, i: usize) -> F {
-        self.graph.get(i)
-    }
-
-    fn set(&mut self, i: usize, f: F) {
-        self.graph.set(i, f)
+    fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F) {
+        self.graph.map_mut_with(&rhs.graph, f)
     }
 }
