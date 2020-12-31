@@ -1,4 +1,4 @@
-use crate::{GraphExec, GraphExecTrain};
+use crate::{train::GraphExecTrain, GraphExec};
 use ndarray::{Array, Dimension, LinalgScalar, ScalarOperand};
 use num_traits::Float;
 

@@ -1,6 +1,11 @@
-use crate::{Graph, GraphExec, GraphExecTrain, Mappable, activation::{Activation, Linear}, initialisers::Initialiser};
-use ndarray::{Array1, Array2, Axis, LinalgScalar, ScalarOperand};
-use num_traits::{FromPrimitive};
+use crate::{
+    activation::{Activation, Linear},
+    initialisers::{Initialiser, Xavier},
+    train::GraphExecTrain,
+    Graph, GraphExec, Mappable, Shaped,
+};
+use ndarray::{Array1, Array2, Axis, Dim, LinalgScalar, ScalarOperand};
+use num_traits::{FromPrimitive, Zero, One};
 use rand::{distributions::Distribution, Rng};
 
 #[derive(Debug, Copy, Clone)]
@@ -9,13 +14,23 @@ pub struct Dense<I> {
     initialiser: I,
 }
 
-impl<I> Dense<I> {
-    pub fn new(output_size: usize, initialiser: I) -> Self {
+impl Dense<Xavier> {
+    pub fn new(output_size: usize) -> Self {
         Dense {
             output_size,
+            initialiser: Xavier,
+        }
+    }
+}
+
+impl<I> Dense<I> {
+    pub fn with_initialiser<I1>(self, initialiser: I1) -> Dense<I1> {
+        Dense {
+            output_size: self.output_size,
             initialiser,
         }
     }
+
     pub fn with_activation<A: Activation<Self>>(self, a: A) -> Linear<Self, A> {
         a.into_activation(self)
     }
@@ -109,74 +124,12 @@ where
     }
 }
 
-// impl<F> Add<DenseState<F>> for DenseState<F>
-// where
-//     F: LinalgScalar,
-// {
-//     type Output = DenseState<F>;
-//     fn add(self, rhs: DenseState<F>) -> DenseState<F> {
-//         DenseState {
-//             w: self.w + rhs.w,
-//             b: self.b + rhs.b,
-//         }
-//     }
-// }
-// impl<F> AddAssign<DenseState<F>> for DenseState<F>
-// where
-//     F: LinalgScalar + AddAssign<F>,
-// {
-//     fn add_assign(&mut self, rhs: DenseState<F>) {
-//         self.w += &rhs.w;
-//         self.b += &rhs.b;
-//     }
-// }
-// impl<F> Mul<F> for DenseState<F>
-// where
-//     F: LinalgScalar + ScalarOperand,
-// {
-//     type Output = DenseState<F>;
-//     fn mul(self, rhs: F) -> DenseState<F> {
-//         DenseState {
-//             w: self.w * rhs,
-//             b: self.b * rhs,
-//         }
-//     }
-// }
-
-// impl<F> DerivativeTesting<F> for DenseState<F>
-// where
-//     F: LinalgScalar,
-// {
-//     fn len(&self) -> usize {
-//         self.w.len() + self.b.len()
-//     }
-
-//     fn get(&self, i: usize) -> F {
-//         let l = self.w.len();
-//         if i < l {
-//             self.w.as_slice().unwrap()[i]
-//         } else {
-//             self.b[i - l]
-//         }
-//     }
-
-//     fn set(&mut self, i: usize, f: F) {
-//         let l = self.w.len();
-//         if i < l {
-//             self.w.as_slice_mut().unwrap()[i] = f;
-//         } else {
-//             self.b[i - l] = f;
-//         }
-//     }
-// }
-
-
 impl<T> Mappable<T> for DenseState<T> {
     fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self {
         let DenseState { w, b } = self;
         let w = w.map(f.clone());
         let b = b.map(f);
-        DenseState{w, b}
+        DenseState { w, b }
     }
     fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F) {
         self.w.map_mut(f.clone());
@@ -185,5 +138,33 @@ impl<T> Mappable<T> for DenseState<T> {
     fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F) {
         self.w.zip_mut_with(&rhs.w, f.clone());
         self.b.zip_mut_with(&rhs.b, f);
+    }
+}
+
+impl<T> Shaped<T> for DenseState<T>
+where
+    T: Clone + Zero + One,
+{
+    type Shape = Dim<[usize; 2]>;
+    fn shape(&self) -> Self::Shape {
+        self.w.raw_dim()
+    }
+    fn zero(shape: Self::Shape) -> Self {
+        DenseState {
+            w: Array2::zeros(shape),
+            b: Array1::zeros(shape[0]),
+        }
+    }
+    fn one(shape: Self::Shape) -> Self {
+        DenseState {
+            w: Array2::ones(shape),
+            b: Array1::ones(shape[0]),
+        }
+    }
+    fn iter(shape: Self::Shape, mut i: impl Iterator<Item=T>) -> Self {
+        DenseState {
+            w: Array2::from_shape_fn(shape, |_| i.next().unwrap()),
+            b: Array1::from_shape_fn(shape[0], |_| i.next().unwrap()),
+        }
     }
 }

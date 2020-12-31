@@ -1,7 +1,3 @@
-use std::ops::{Add, Div, Sub};
-
-use crate::{Cost, GraphExec, Mappable};
-
 // pub trait DerivativeTesting<F> {
 //     /// Number of adjustable parameters in the graph
 //     fn len(&self) -> usize;

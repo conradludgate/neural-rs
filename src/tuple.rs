@@ -1,4 +1,4 @@
-use crate::{Graph, GraphExec, GraphExecTrain, Mappable};
+use crate::{Graph, GraphExec, Mappable, Shaped, train::GraphExecTrain};
 use rand::Rng;
 
 /// Tuple2<T, U> is essentially (T, U) but redefined to allow implementing more traits on it.
@@ -82,6 +82,26 @@ where
     fn map_mut_with<F: FnMut(&mut S, &S) + Clone>(&mut self, rhs: &Self, f: F) {
         self.0.map_mut_with(&rhs.0, f.clone());
         self.1.map_mut_with(&rhs.1, f);
+    }
+}
+
+impl<F, T, U> Shaped<F> for Tuple2<T, U>
+where
+    T: Shaped<F>,
+    U: Shaped<F>,
+{
+    type Shape = Tuple2<T::Shape, U::Shape>;
+    fn shape(&self) -> Self::Shape {
+        Tuple2(self.0.shape(), self.1.shape())
+    }
+    fn zero(shape: Self::Shape) -> Self {
+        Tuple2(T::zero(shape.0), U::zero(shape.1))
+    }
+    fn one(shape: Self::Shape) -> Self {
+        Tuple2(T::one(shape.0), U::one(shape.1))
+    }
+    fn iter(shape: Self::Shape, mut i: impl Iterator<Item=F>) -> Self {
+        Tuple2(T::iter(shape.0, &mut i), U::iter(shape.1, &mut i))
     }
 }
 

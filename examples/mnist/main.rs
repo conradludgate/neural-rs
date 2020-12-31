@@ -5,11 +5,12 @@ use std::mem::MaybeUninit;
 use indicatif::{ProgressBar, ProgressStyle};
 use linear_networks::{
     activation::{relu::Relu, sigmoid::Sigmoid},
-    cost::MSE,
+    cost::mse::MSE,
     dense::Dense,
     initialisers::Xavier,
-    optimise::{sgd::SGD, Train},
-    tuple, Graph, GraphExec,
+    optimise::{adam::Adam, sgd::SGD},
+    train::{Regularisation, Train},
+    tuple, Graph, GraphExec, Shaped,
 };
 use ndarray::Array2;
 use rand::prelude::*;
@@ -22,15 +23,30 @@ fn main() {
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
     let network: _ = tuple![
-        Dense::new(16, Xavier).with_activation(Relu),
-        Dense::new(16, Xavier).with_activation(Relu),
-        Dense::new(10, Xavier).with_activation(Sigmoid)
+        Dense::new(16)
+            .with_initialiser(Xavier)
+            .with_activation(Relu),
+        Dense::new(16)
+            .with_initialiser(Xavier)
+            .with_activation(Relu),
+        Dense::new(10)
+            .with_initialiser(Xavier)
+            .with_activation(Sigmoid)
     ]
     .input_shape(28 * 28);
 
     // New trainer with mean squared error cost function and
     // stochastic gradient descent optimisation (alpha=0.1)
-    let mut trainer: _ = Train::new(network, MSE, SGD::new(0.01));
+    // let mut trainer: _ = Train::new(network, MSE, SGD::new(0.01));
+
+    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
+    let mut trainer: _ = Train {
+        graph: network,
+        optimiser,
+        cost: MSE,
+        regularisation: Some(Regularisation::L2(0.01)),
+        dropout: 0.2,
+    };
 
     let mut costs = vec![];
 
@@ -63,7 +79,7 @@ fn main() {
         ));
     }
 
-    let network = trainer.into_inner();
+    let network = trainer.graph;
 
     println!("network: {:?}", network);
 

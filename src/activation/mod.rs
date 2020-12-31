@@ -1,4 +1,4 @@
-use crate::{Graph, GraphExec, GraphExecTrain, Mappable};
+use crate::{train::GraphExecTrain, Graph, GraphExec, Mappable, Shaped};
 use rand::Rng;
 
 pub mod relu;
@@ -88,5 +88,37 @@ where
     }
     fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F) {
         self.graph.map_mut_with(&rhs.graph, f)
+    }
+}
+
+impl<F, G, L> Shaped<F> for Linear<G, L>
+where
+    G: Shaped<F>,
+    L: Clone,
+{
+    type Shape = Linear<G::Shape, L>;
+    fn shape(&self) -> Self::Shape {
+        Linear {
+            graph: self.graph.shape(),
+            linear: self.linear.clone(),
+        }
+    }
+    fn zero(shape: Self::Shape) -> Self {
+        Linear {
+            graph: G::zero(shape.graph),
+            linear: shape.linear,
+        }
+    }
+    fn one(shape: Self::Shape) -> Self {
+        Linear {
+            graph: G::one(shape.graph),
+            linear: shape.linear,
+        }
+    }
+    fn iter(shape: Self::Shape, i: impl Iterator<Item=F>) -> Self {
+        Linear {
+            graph: G::iter(shape.graph, i),
+            linear: shape.linear,
+        }
     }
 }

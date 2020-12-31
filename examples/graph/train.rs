@@ -1,13 +1,6 @@
-use std::mem::MaybeUninit;
+use std::{mem::MaybeUninit};
 
-use linear_networks::{
-    activation::{relu::Relu, sigmoid::Sigmoid},
-    cost::MSE,
-    dense::Dense,
-    initialisers::Xavier,
-    optimise::{adam::Adam, sgd::SGD, Train},
-    tuple, Graph,
-};
+use linear_networks::{Graph, Shaped, activation::{relu::Relu, sigmoid::Sigmoid}, cost::mse::MSE, dense::Dense, initialisers::Xavier, optimise::{adam::Adam}, train::{Regularisation, Train}, tuple};
 use ndarray::Array2;
 use rand::prelude::*;
 use std::sync::mpsc;
@@ -22,15 +15,27 @@ pub fn train(tx: mpsc::Sender<Event>) {
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
     let network: _ = tuple![
-        Dense::new(16, Xavier).with_activation(Relu),
-        Dense::new(16, Xavier).with_activation(Relu),
-        Dense::new(10, Xavier).with_activation(Sigmoid)
+        Dense::new(16)
+            .with_initialiser(Xavier)
+            .with_activation(Relu),
+        Dense::new(16)
+            .with_initialiser(Xavier)
+            .with_activation(Relu),
+        Dense::new(10)
+            .with_initialiser(Xavier)
+            .with_activation(Sigmoid)
     ]
     .input_shape(28 * 28);
 
     // New trainer with mean squared error cost function
-    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, &network);
-    let mut trainer: _ = Train::new(network, MSE, optimiser);
+    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
+    let mut trainer: _ = Train{
+        graph: network,
+        optimiser,
+        cost: MSE,
+        regularisation: None,
+        dropout: 0.2,
+    };
 
     const BATCH_SIZE: usize = 120;
 

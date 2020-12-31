@@ -5,6 +5,7 @@ pub mod derivative;
 pub mod initialisers;
 pub mod optimise;
 pub mod tuple;
+pub mod train;
 
 use rand::Rng;
 
@@ -14,27 +15,20 @@ pub trait Mappable<T> {
     fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F);
 }
 
+pub trait Shaped<F> {
+    type Shape;
+    fn shape(&self) -> Self::Shape;
+    fn zero(shape: Self::Shape) -> Self;
+    fn one(shape: Self::Shape) -> Self;
+    fn iter(shape: Self::Shape, i: impl Iterator<Item=F>) -> Self;
+}
+
 pub trait GraphExec<Input> {
     type Output;
 
     /// Executes the computation graph on the given input to create
     /// the output value
     fn exec(&self, input: &Input) -> Self::Output;
-}
-
-pub trait GraphExecTrain<Input>: GraphExec<Input> + Sized {
-    type State;
-    fn forward(&self, input: &Input) -> (Self::State, Self::Output);
-    fn back(&self, state: Self::State, d_output: Self::Output) -> (Input, Self);
-    fn get_grads<C>(&self, input: &Input, expected: &Self::Output, cost: &C) -> (Self, C::Inner)
-    where
-        C: Cost<Self::Output>,
-    {
-        let (state, output): _ = self.forward(input);
-
-        let d_output: _ = cost.diff(&output, &expected);
-        (self.back(state, d_output).1, cost.cost(&output, &expected))
-    }
 }
 
 /// An abstract representation of a Computation Graph.
@@ -57,11 +51,6 @@ pub trait Graph<F, InputShape>: Sized {
     fn init_with_random(self, rng: &mut impl Rng, input_shape: InputShape) -> Self::State;
 }
 
-pub trait Cost<T> {
-    type Inner;
-    fn cost(&self, output: &T, expected: &T) -> Self::Inner;
-    fn diff(&self, output: &T, expected: &T) -> T;
-}
 
 // #[cfg(test)]
 // mod test {
