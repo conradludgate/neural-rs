@@ -46,9 +46,9 @@ where
     L: GraphExec<G::Output, Output = G::Output>,
 {
     type Output = G::Output;
-    fn exec(&self, input: &Input) -> Self::Output {
-        let output = self.graph.exec(&input);
-        self.linear.exec(&output)
+    fn exec(&self, input: Input) -> Self::Output {
+        let output = self.graph.exec(input);
+        self.linear.exec(output)
     }
 }
 
@@ -58,9 +58,9 @@ where
     L: GraphExecTrain<G::Output, Output = G::Output>,
 {
     type State = Linear<G::State, L::State>;
-    fn forward(&self, input: &Input) -> (Self::State, Self::Output) {
-        let (graph, output): _ = self.graph.forward(&input);
-        let (linear, output): _ = self.linear.forward(&output);
+    fn forward(&self, input: Input) -> (Self::State, Self::Output) {
+        let (graph, output): _ = self.graph.forward(input);
+        let (linear, output): _ = self.linear.forward(output);
         (Linear { graph, linear }, output)
     }
 

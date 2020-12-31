@@ -1,11 +1,12 @@
 use crate::{
     activation::{Activation, Linear},
+    array::{compact_front, dot_front, dot_inner},
     initialisers::{Initialiser, Xavier},
     train::GraphExecTrain,
     Graph, GraphExec, Mappable, Shaped,
 };
-use ndarray::{Array1, Array2, Axis, Dim, LinalgScalar, ScalarOperand};
-use num_traits::{FromPrimitive, Zero, One};
+use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dim, Dimension, LinalgScalar, RawData, RemoveAxis, ScalarOperand};
+use num_traits::{FromPrimitive, One, Zero};
 use rand::{distributions::Distribution, Rng};
 
 #[derive(Debug, Copy, Clone)]
@@ -52,7 +53,7 @@ where
             .initialiser
             .into_distribution((input_size, self.output_size));
 
-        let w = Array2::from_shape_simple_fn((self.output_size, input_size), || d.sample(rng));
+        let w = Array2::from_shape_simple_fn((input_size, self.output_size), || d.sample(rng));
         let b = Array1::from_shape_simple_fn(self.output_size, || d.sample(rng));
 
         DenseState { w, b }
@@ -65,61 +66,33 @@ pub struct DenseState<F> {
     pub b: Array1<F>,
 }
 
-impl<F> GraphExec<Array1<F>> for DenseState<F>
+impl<F, S, D> GraphExec<ArrayBase<S, D>> for DenseState<F>
 where
     F: LinalgScalar,
+    D: Dimension,
+    S: RawData<Elem=F> + Data,
 {
-    type Output = Array1<F>;
+    type Output = Array<F, D>;
 
-    fn exec(&self, input: &Array1<F>) -> Self::Output {
-        self.w.dot(input) + self.b.clone()
+    fn exec(&self, input: ArrayBase<S, D>) -> Self::Output {
+        dot_inner(input, self.w.view()) + &self.b
     }
 }
 
-impl<F> GraphExec<Array2<F>> for DenseState<F>
-where
-    F: LinalgScalar,
-{
-    type Output = Array2<F>;
-
-    fn exec(&self, input: &Array2<F>) -> Self::Output {
-        self.w.dot(input) + self.b.clone().insert_axis(Axis(1))
-    }
-}
-
-impl<F> GraphExecTrain<Array1<F>> for DenseState<F>
-where
-    F: LinalgScalar,
-{
-    type State = Array1<F>;
-    fn forward(&self, input: &Array1<F>) -> (Self::State, Self::Output) {
-        (input.clone(), self.exec(input))
-    }
-
-    fn back(&self, input: Self::State, d_output: Self::Output) -> (Array1<F>, Self) {
-        let di = self.w.t().dot(&d_output);
-        let db = d_output.clone();
-        let dw = d_output
-            .insert_axis(Axis(1))
-            .dot(&input.insert_axis(Axis(0)));
-        (di, DenseState { w: dw, b: db })
-    }
-}
-
-impl<F> GraphExecTrain<Array2<F>> for DenseState<F>
+impl<F, D> GraphExecTrain<Array<F, D>> for DenseState<F>
 where
     F: LinalgScalar + FromPrimitive + ScalarOperand,
+    D: Dimension + RemoveAxis,
 {
-    type State = Array2<F>;
-    fn forward(&self, input: &Array2<F>) -> (Self::State, Self::Output) {
+    type State = Array<F, D>;
+    fn forward(&self, input: Array<F, D>) -> (Self::State, Self::Output) {
         (input.clone(), self.exec(input))
     }
 
-    fn back(&self, input: Self::State, d_output: Self::Output) -> (Array2<F>, Self) {
-        let batch_size = F::from_usize(d_output.raw_dim()[1]).unwrap();
-        let di = self.w.t().dot(&d_output);
-        let db = d_output.mean_axis(Axis(1)).unwrap();
-        let dw = d_output.dot(&input.t()) / batch_size;
+    fn back(&self, input: Self::State, d_output: Self::Output) -> (Array<F, D>, Self) {
+        let di = dot_inner(d_output.clone(), self.w.t());
+        let db = compact_front(d_output.clone()).mean_axis(Axis(0)).unwrap();
+        let dw = dot_front(input, d_output);
         (di, DenseState { w: dw, b: db })
     }
 }
@@ -152,19 +125,19 @@ where
     fn zero(shape: Self::Shape) -> Self {
         DenseState {
             w: Array2::zeros(shape),
-            b: Array1::zeros(shape[0]),
+            b: Array1::zeros(shape[1]),
         }
     }
     fn one(shape: Self::Shape) -> Self {
         DenseState {
             w: Array2::ones(shape),
-            b: Array1::ones(shape[0]),
+            b: Array1::ones(shape[1]),
         }
     }
-    fn iter(shape: Self::Shape, mut i: impl Iterator<Item=T>) -> Self {
+    fn iter(shape: Self::Shape, mut i: impl Iterator<Item = T>) -> Self {
         DenseState {
             w: Array2::from_shape_fn(shape, |_| i.next().unwrap()),
-            b: Array1::from_shape_fn(shape[0], |_| i.next().unwrap()),
+            b: Array1::from_shape_fn(shape[1], |_| i.next().unwrap()),
         }
     }
 }

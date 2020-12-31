@@ -39,9 +39,9 @@ where
     G1: GraphExec<G0::Output>,
 {
     type Output = G1::Output;
-    fn exec(&self, input: &Input) -> Self::Output {
-        let input = self.0.exec(&input);
-        self.1.exec(&input)
+    fn exec(&self, input: Input) -> Self::Output {
+        let input = self.0.exec(input);
+        self.1.exec(input)
     }
 }
 
@@ -51,9 +51,9 @@ where
     G1: GraphExecTrain<G0::Output>,
 {
     type State = Tuple2<G0::State, G1::State>;
-    fn forward(&self, input: &Input) -> (Self::State, Self::Output) {
-        let (s0, input): _ = self.0.forward(&input);
-        let (s1, input): _ = self.1.forward(&input);
+    fn forward(&self, input: Input) -> (Self::State, Self::Output) {
+        let (s0, input): _ = self.0.forward(input);
+        let (s1, input): _ = self.1.forward(input);
         (Tuple2(s0, s1), input)
     }
 

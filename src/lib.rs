@@ -1,11 +1,12 @@
 pub mod activation;
+mod array;
 pub mod cost;
 pub mod dense;
 pub mod derivative;
 pub mod initialisers;
 pub mod optimise;
-pub mod tuple;
 pub mod train;
+pub mod tuple;
 
 use rand::Rng;
 
@@ -20,7 +21,7 @@ pub trait Shaped<F> {
     fn shape(&self) -> Self::Shape;
     fn zero(shape: Self::Shape) -> Self;
     fn one(shape: Self::Shape) -> Self;
-    fn iter(shape: Self::Shape, i: impl Iterator<Item=F>) -> Self;
+    fn iter(shape: Self::Shape, i: impl Iterator<Item = F>) -> Self;
 }
 
 pub trait GraphExec<Input> {
@@ -28,7 +29,7 @@ pub trait GraphExec<Input> {
 
     /// Executes the computation graph on the given input to create
     /// the output value
-    fn exec(&self, input: &Input) -> Self::Output;
+    fn exec(&self, input: Input) -> Self::Output;
 }
 
 /// An abstract representation of a Computation Graph.
@@ -50,7 +51,6 @@ pub trait Graph<F, InputShape>: Sized {
     /// Use to initialise with a predefined random source
     fn init_with_random(self, rng: &mut impl Rng, input_shape: InputShape) -> Self::State;
 }
-
 
 // #[cfg(test)]
 // mod test {

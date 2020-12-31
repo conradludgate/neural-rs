@@ -1,6 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
-use num_traits::Float;
+use ndarray::{Array, ArrayView, Axis, Dimension, RemoveAxis};
+use num_traits::{Float, FromPrimitive};
 use rand::prelude::*;
 use rand_distr::{
     uniform::{SampleBorrow, SampleUniform},
@@ -11,9 +12,9 @@ use crate::{cost::Cost, optimise::Optimiser, GraphExec, Mappable, Shaped};
 
 pub trait GraphExecTrain<Input>: GraphExec<Input> + Sized {
     type State;
-    fn forward(&self, input: &Input) -> (Self::State, Self::Output);
+    fn forward(&self, input: Input) -> (Self::State, Self::Output);
     fn back(&self, state: Self::State, d_output: Self::Output) -> (Input, Self);
-    fn get_grads<C>(&self, input: &Input, expected: &Self::Output, cost: &C) -> (Self, C::Inner)
+    fn get_grads<C>(&self, input: Input, expected: Self::Output, cost: &C) -> (Self, C::Inner)
     where
         C: Cost<Self::Output>,
     {
@@ -45,12 +46,85 @@ impl<F, C, O, G> DerefMut for Train<F, C, O, G> {
 }
 
 impl<F, C, O, G> Train<F, C, O, G> {
-    pub fn train<Input>(&mut self, input: &Input, expected: &G::Output) -> C::Inner
+    pub fn perform_epoch<D1, D2>(
+        &mut self,
+        inputs: ArrayView<F, D1>,
+        expected: ArrayView<F, D2>,
+        batch_size: usize,
+    ) -> C::Inner
     where
         C: Cost<G::Output, Inner = F>,
         O: Optimiser<G>,
-        G: GraphExecTrain<Input> + Mappable<F> + Shaped<F> + Clone,
-        F: Float + SampleBorrow<F> + SampleUniform,
+        G: GraphExecTrain<Array<F, D1>, Output = Array<F, D2>> + Mappable<F> + Shaped<F> + Clone,
+        F: Float + SampleBorrow<F> + SampleUniform + Clone + FromPrimitive,
+        D1: Dimension + RemoveAxis,
+        D2: Dimension + RemoveAxis,
+    {
+        assert_eq!(inputs.raw_dim()[0], expected.raw_dim()[0]);
+        let total_inputs = inputs.raw_dim()[0];
+
+        let mut rng = thread_rng();
+        let mut indicies: Vec<_> = (0..total_inputs).collect();
+        indicies.shuffle(&mut rng);
+
+        let mut cost = F::zero();
+        for i in (0..total_inputs).step_by(batch_size) {
+            cost = cost + self.train_batch(&inputs, &expected, &indicies[i..i + batch_size]);
+        }
+        if total_inputs % batch_size != 0 {
+            let i = total_inputs - total_inputs % batch_size;
+            cost = cost + self.train_batch(&inputs, &expected, &indicies[i..total_inputs]);
+        }
+
+        cost / F::from_usize((total_inputs + batch_size - 1) / batch_size).unwrap()
+    }
+
+    pub fn train_batch<D1, D2>(
+        &mut self,
+        inputs: &ArrayView<F, D1>,
+        expected: &ArrayView<F, D2>,
+        indicies: &[usize],
+    ) -> C::Inner
+    where
+        C: Cost<G::Output, Inner = F>,
+        O: Optimiser<G>,
+        G: GraphExecTrain<Array<F, D1>, Output = Array<F, D2>> + Mappable<F> + Shaped<F> + Clone,
+        F: Float + SampleBorrow<F> + SampleUniform + Clone,
+        D1: Dimension + RemoveAxis,
+        D2: Dimension + RemoveAxis,
+    {
+        unsafe {
+            let mut input_dim = inputs.raw_dim();
+            input_dim.as_array_view_mut()[0] = indicies.len();
+
+            let mut expected_dim = expected.raw_dim();
+            expected_dim.as_array_view_mut()[0] = indicies.len();
+
+            let mut shuffled_inputs = Array::uninitialized(input_dim);
+            let mut shuffled_expected = Array::uninitialized(expected_dim);
+
+            for (i, &j) in indicies.into_iter().enumerate() {
+                shuffled_inputs
+                    .index_axis_mut(Axis(0), i)
+                    .assign(&inputs.index_axis(Axis(0), j));
+
+                shuffled_expected
+                    .index_axis_mut(Axis(0), i)
+                    .assign(&expected.index_axis(Axis(0), j));
+            }
+
+            self.train(shuffled_inputs, shuffled_expected)
+        }
+    }
+
+    pub fn train<D1, D2>(&mut self, input: Array<F, D1>, expected: Array<F, D2>) -> C::Inner
+    where
+        C: Cost<G::Output, Inner = F>,
+        O: Optimiser<G>,
+        G: GraphExecTrain<Array<F, D1>, Output = Array<F, D2>> + Mappable<F> + Shaped<F> + Clone,
+        F: Float + SampleBorrow<F> + SampleUniform + Clone,
+        D1: Dimension,
+        D2: Dimension,
     {
         let zero = F::zero();
         let one = F::one();

@@ -15,7 +15,6 @@ use crate::train::train;
 pub enum Event {
     Input(Key),
     Tick,
-    Step(usize, usize),
     EpochComplete(f64),
 }
 

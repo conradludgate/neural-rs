@@ -18,7 +18,7 @@ where
     D: Dimension,
 {
     type Output = Array<F, D>;
-    fn exec(&self, input: &Array<F, D>) -> Self::Output {
+    fn exec(&self, input: Array<F, D>) -> Self::Output {
         let zero = F::zero();
         input.mapv(|x| x.max(zero))
     }
@@ -30,9 +30,9 @@ where
     D: Dimension,
 {
     type State = (Array<F, D>, Self::Output);
-    fn forward(&self, input: &Array<F, D>) -> (Self::State, Self::Output) {
-        let output = self.exec(input);
-        ((input.clone(), output.clone()), output)
+    fn forward(&self, input: Array<F, D>) -> (Self::State, Self::Output) {
+        let output = self.exec(input.clone());
+        ((input, output.clone()), output)
     }
 
     fn back(&self, (input, output): Self::State, d_output: Self::Output) -> (Array<F, D>, Self) {
