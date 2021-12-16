@@ -3,7 +3,7 @@ use std::marker::PhantomData;
 use crate::{
     activation::{Activation, Linear},
     array::{compact_front, dot_front, dot_inner},
-    initialisers::{Initialiser, Xavier},
+    initialisers::Initialiser,
     train::GraphExecTrain,
     Graph, GraphExec, Mappable, Shaped,
 };
@@ -22,21 +22,16 @@ pub struct Dense<I> {
 
 pub struct DenseSize<I> {
     output_size: usize,
-    initialiser: PhantomData<I>
-}
-
-impl Dense<Xavier> {
-    pub fn new(output_size: usize) -> Self {
-        Dense {
-            output_size,
-            initialiser: Xavier,
-        }
-    }
+    initialiser: PhantomData<I>,
 }
 
 impl<I> Dense<I> {
-    pub fn output_size(output_size: usize) -> DenseSize<I> {
-        DenseSize { output_size, initialiser: PhantomData }
+    #[must_use]
+    pub const fn output_size(output_size: usize) -> DenseSize<I> {
+        DenseSize {
+            output_size,
+            initialiser: PhantomData,
+        }
     }
 
     pub fn with_activation<A: Activation<Self>>(self, a: A) -> Linear<Self, A> {
@@ -45,7 +40,7 @@ impl<I> Dense<I> {
 }
 
 impl<I> DenseSize<I> {
-    pub fn with_initialiser(self, initialiser: I) -> Dense<I> {
+    pub const fn with_initialiser(self, initialiser: I) -> Dense<I> {
         Dense {
             output_size: self.output_size,
             initialiser,
@@ -91,7 +86,7 @@ where
     type Output = Array<F, D>;
 
     fn exec(&self, input: ArrayBase<S, D>) -> Self::Output {
-        dot_inner(input, self.w.view()) + &self.b
+        dot_inner(input, &self.w.view()) + &self.b
     }
 }
 
@@ -106,10 +101,10 @@ where
     }
 
     fn back(&self, input: Self::State, d_output: Self::Output) -> (Array<F, D>, Self) {
-        let di = dot_inner(d_output.clone(), self.w.t());
+        let di = dot_inner(d_output.clone(), &self.w.t());
         let db = compact_front(d_output.clone()).mean_axis(Axis(0)).unwrap();
         let dw = dot_front(input, d_output);
-        (di, DenseState { w: dw, b: db })
+        (di, Self { w: dw, b: db })
     }
 }
 
@@ -121,7 +116,7 @@ impl<T> Mappable<T> for DenseState<T> {
         let DenseState { w, b } = self;
         let w = w.map(|a| f(a));
         let b = b.map(f);
-        DenseState { w, b }
+        Self { w, b }
     }
     fn map_mut<F: FnMut(&mut T)>(&mut self, mut f: F) {
         self.w.map_mut(|a| f(a));
@@ -142,19 +137,19 @@ where
         self.w.raw_dim()
     }
     fn zero(shape: Self::Shape) -> Self {
-        DenseState {
+        Self {
             w: Array2::zeros(shape),
             b: Array1::zeros(shape[1]),
         }
     }
     fn one(shape: Self::Shape) -> Self {
-        DenseState {
+        Self {
             w: Array2::ones(shape),
             b: Array1::ones(shape[1]),
         }
     }
     fn iter(shape: Self::Shape, mut i: impl Iterator<Item = T>) -> Self {
-        DenseState {
+        Self {
             w: Array2::from_shape_fn(shape, |_| i.next().unwrap()),
             b: Array1::from_shape_fn(shape[1], |_| i.next().unwrap()),
         }

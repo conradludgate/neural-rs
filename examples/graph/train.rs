@@ -48,7 +48,7 @@ pub fn train(tx: mpsc::Sender<Event>) {
 
     for _ in 0.. {
         let cost =
-            trainer.perform_epoch(training_data.0.view(), training_data.1.view(), BATCH_SIZE);
+            trainer.perform_epoch(&training_data.0.view(), &training_data.1.view(), BATCH_SIZE);
         tx.send(Event::EpochComplete(cost)).unwrap();
     }
 }

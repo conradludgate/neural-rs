@@ -48,8 +48,8 @@ impl<F, C, O, G> DerefMut for Train<F, C, O, G> {
 impl<F, C, O, G> Train<F, C, O, G> {
     pub fn perform_epoch<D1, D2>(
         &mut self,
-        inputs: ArrayView<F, D1>,
-        expected: ArrayView<F, D2>,
+        inputs: &ArrayView<F, D1>,
+        expected: &ArrayView<F, D2>,
         batch_size: usize,
     ) -> C::Inner
     where
@@ -69,11 +69,11 @@ impl<F, C, O, G> Train<F, C, O, G> {
 
         let mut cost = F::zero();
         for i in (0..total_inputs).step_by(batch_size) {
-            cost = cost + self.train_batch(&inputs, &expected, &indicies[i..i + batch_size]);
+            cost = cost + self.train_batch(inputs, expected, &indicies[i..i + batch_size]);
         }
         if total_inputs % batch_size != 0 {
             let i = total_inputs - total_inputs % batch_size;
-            cost = cost + self.train_batch(&inputs, &expected, &indicies[i..total_inputs]);
+            cost = cost + self.train_batch(inputs, expected, &indicies[i..total_inputs]);
         }
 
         cost / F::from_usize((total_inputs + batch_size - 1) / batch_size).unwrap()

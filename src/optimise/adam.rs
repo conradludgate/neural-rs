@@ -23,7 +23,7 @@ where
 {
     pub fn new(alpha: F, beta1: F, beta2: F, epsilon: F, shape: G::Shape) -> Self {
         let zero = G::zero(shape);
-        Adam {
+        Self {
             alpha,
             beta1,
             beta2,
@@ -60,7 +60,7 @@ where
 
         // v_t = b2 * v_t-1 + (1 - b2) * g_t^2
         self.v.map_mut_with(&grads, |v, &g| {
-            *v = *v * b2 + g * g * (one - b2);
+            *v = *v * b2 + g.powi(2) * (one - b2);
         });
 
         // m_t' = m_t / (1 - b1^t)

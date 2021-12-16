@@ -1,3 +1,7 @@
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![allow(clippy::module_name_repetitions, clippy::missing_panics_doc)]
+
 pub mod activation;
 mod array;
 pub mod cost;

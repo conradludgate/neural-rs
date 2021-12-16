@@ -15,8 +15,8 @@ pub struct Linear<G, L> {
 }
 
 impl<G, L> Linear<G, L> {
-    pub fn new(graph: G, linear: L) -> Self {
-        Linear { graph, linear }
+    pub const fn new(graph: G, linear: L) -> Self {
+        Self { graph, linear }
     }
 }
 
@@ -68,7 +68,7 @@ where
         let Linear { linear, graph } = state;
         let (d_output, linear) = self.linear.back(linear, d_output);
         let (d_input, graph) = self.graph.back(graph, d_output);
-        (d_input, Linear { linear, graph })
+        (d_input, Self { graph, linear })
     }
 }
 
@@ -78,16 +78,16 @@ where
     L: Clone,
 {
     fn map<F: FnMut(&T) -> T>(&self, f: F) -> Self {
-        Linear {
+        Self {
             graph: self.graph.map(f),
             linear: self.linear.clone(),
         }
     }
     fn map_mut<F: FnMut(&mut T)>(&mut self, f: F) {
-        self.graph.map_mut(f)
+        self.graph.map_mut(f);
     }
     fn map_mut_with<F: FnMut(&mut T, &T)>(&mut self, rhs: &Self, f: F) {
-        self.graph.map_mut_with(&rhs.graph, f)
+        self.graph.map_mut_with(&rhs.graph, f);
     }
 }
 
@@ -104,19 +104,19 @@ where
         }
     }
     fn zero(shape: Self::Shape) -> Self {
-        Linear {
+        Self {
             graph: G::zero(shape.graph),
             linear: shape.linear,
         }
     }
     fn one(shape: Self::Shape) -> Self {
-        Linear {
+        Self {
             graph: G::one(shape.graph),
             linear: shape.linear,
         }
     }
     fn iter(shape: Self::Shape, i: impl Iterator<Item = F>) -> Self {
-        Linear {
+        Self {
             graph: G::iter(shape.graph, i),
             linear: shape.linear,
         }

@@ -8,8 +8,8 @@ use super::Optimiser;
 pub struct SGD<F>(F);
 
 impl<F> SGD<F> {
-    pub fn new(alpha: F) -> Self {
-        SGD(alpha)
+    pub const fn new(alpha: F) -> Self {
+        Self(alpha)
     }
 }
 

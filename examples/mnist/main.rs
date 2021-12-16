@@ -52,9 +52,9 @@ fn main() {
 
     for _ in 0..20 {
         let cost =
-            trainer.perform_epoch(training_data.0.view(), training_data.1.view(), BATCH_SIZE);
+            trainer.perform_epoch(&training_data.0.view(), &training_data.1.view(), BATCH_SIZE);
 
-        costs.push(cost);
+        costs.push(dbg!(cost));
     }
 
     let network = trainer.graph;
