@@ -21,13 +21,13 @@ fn main() {
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
     let network = net![
-        Dense::new(16)
+        Dense::output_size(16)
             .with_initialiser(Xavier)
             .with_activation(Relu),
-        Dense::new(16)
+        Dense::output_size(16)
             .with_initialiser(Xavier)
             .with_activation(Relu),
-        Dense::new(10)
+        Dense::output_size(10)
             .with_initialiser(Xavier)
             .with_activation(Sigmoid)
     ]

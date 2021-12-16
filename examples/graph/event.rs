@@ -22,10 +22,10 @@ pub enum Event {
 /// type is handled in its own thread and returned to a common `Receiver`
 pub struct Events {
     rx: mpsc::Receiver<Event>,
-    input_handle: thread::JoinHandle<()>,
-    ignore_exit_key: Arc<AtomicBool>,
-    tick_handle: thread::JoinHandle<()>,
-    train_handle: thread::JoinHandle<()>,
+    _input_handle: thread::JoinHandle<()>,
+    _ignore_exit_key: Arc<AtomicBool>,
+    _tick_handle: thread::JoinHandle<()>,
+    _train_handle: thread::JoinHandle<()>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -50,10 +50,10 @@ impl Events {
 
     pub fn with_config(config: Config) -> Events {
         let (tx, rx) = mpsc::channel();
-        let ignore_exit_key = Arc::new(AtomicBool::new(false));
-        let input_handle = {
+        let _ignore_exit_key = Arc::new(AtomicBool::new(false));
+        let _input_handle = {
             let tx = tx.clone();
-            let ignore_exit_key = ignore_exit_key.clone();
+            let ignore_exit_key = _ignore_exit_key.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
                 for key in stdin.keys().flatten() {
@@ -67,7 +67,7 @@ impl Events {
                 }
             })
         };
-        let tick_handle = {
+        let _tick_handle = {
             let tx = tx.clone();
             thread::spawn(move || loop {
                 if tx.send(Event::Tick).is_err() {
@@ -76,17 +76,17 @@ impl Events {
                 thread::sleep(config.tick_rate);
             })
         };
-        let train_handle = {
+        let _train_handle = {
             thread::spawn(move || {
                 train(tx);
             })
         };
         Events {
             rx,
-            ignore_exit_key,
-            input_handle,
-            tick_handle,
-            train_handle,
+            _ignore_exit_key,
+            _input_handle,
+            _tick_handle,
+            _train_handle,
         }
     }
 

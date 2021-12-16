@@ -11,9 +11,9 @@ pub mod train;
 use rand::Rng;
 
 pub trait Mappable<T> {
-    fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self;
-    fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F);
-    fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F);
+    fn map<F: FnMut(&T) -> T>(&self, f: F) -> Self;
+    fn map_mut<F: FnMut(&mut T)>(&mut self, f: F);
+    fn map_mut_with<F: FnMut(&mut T, &T)>(&mut self, rhs: &Self, f: F);
 }
 
 pub trait Shaped<F> {

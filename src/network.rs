@@ -59,17 +59,17 @@ where
     T: Mappable<S>,
     U: Mappable<S>,
 {
-    fn map<F: FnMut(&S) -> S + Clone>(&self, f: F) -> Self {
-        let t = self.0.map(f.clone());
+    fn map<F: FnMut(&S) -> S>(&self, mut f: F) -> Self {
+        let t = self.0.map(|a| f(a));
         let u = self.1.map(f);
         (t, u)
     }
-    fn map_mut<F: FnMut(&mut S) + Clone>(&mut self, f: F) {
-        self.0.map_mut(f.clone());
+    fn map_mut<F: FnMut(&mut S)>(&mut self, mut f: F) {
+        self.0.map_mut(|a| f(a));
         self.1.map_mut(f);
     }
-    fn map_mut_with<F: FnMut(&mut S, &S) + Clone>(&mut self, rhs: &Self, f: F) {
-        self.0.map_mut_with(&rhs.0, f.clone());
+    fn map_mut_with<F: FnMut(&mut S, &S)>(&mut self, rhs: &Self, mut f: F) {
+        self.0.map_mut_with(&rhs.0, |a, b| f(a, b));
         self.1.map_mut_with(&rhs.1, f);
     }
 }

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{
     activation::{Activation, Linear},
     array::{compact_front, dot_front, dot_inner},
@@ -18,6 +20,11 @@ pub struct Dense<I> {
     initialiser: I,
 }
 
+pub struct DenseSize<I> {
+    output_size: usize,
+    initialiser: PhantomData<I>
+}
+
 impl Dense<Xavier> {
     pub fn new(output_size: usize) -> Self {
         Dense {
@@ -28,15 +35,21 @@ impl Dense<Xavier> {
 }
 
 impl<I> Dense<I> {
-    pub fn with_initialiser<I1>(self, initialiser: I1) -> Dense<I1> {
-        Dense {
-            output_size: self.output_size,
-            initialiser,
-        }
+    pub fn output_size(output_size: usize) -> DenseSize<I> {
+        DenseSize { output_size, initialiser: PhantomData }
     }
 
     pub fn with_activation<A: Activation<Self>>(self, a: A) -> Linear<Self, A> {
         a.into_activation(self)
+    }
+}
+
+impl<I> DenseSize<I> {
+    pub fn with_initialiser(self, initialiser: I) -> Dense<I> {
+        Dense {
+            output_size: self.output_size,
+            initialiser,
+        }
     }
 }
 
@@ -101,18 +114,21 @@ where
 }
 
 impl<T> Mappable<T> for DenseState<T> {
-    fn map<F: FnMut(&T) -> T + Clone>(&self, f: F) -> Self {
+    // not redundant. just forces a capture without needing to clone
+    #![allow(clippy::redundant_closure)]
+
+    fn map<F: FnMut(&T) -> T>(&self, mut f: F) -> Self {
         let DenseState { w, b } = self;
-        let w = w.map(f.clone());
+        let w = w.map(|a| f(a));
         let b = b.map(f);
         DenseState { w, b }
     }
-    fn map_mut<F: FnMut(&mut T) + Clone>(&mut self, f: F) {
-        self.w.map_mut(f.clone());
+    fn map_mut<F: FnMut(&mut T)>(&mut self, mut f: F) {
+        self.w.map_mut(|a| f(a));
         self.b.map_mut(f);
     }
-    fn map_mut_with<F: FnMut(&mut T, &T) + Clone>(&mut self, rhs: &Self, f: F) {
-        self.w.zip_mut_with(&rhs.w, f.clone());
+    fn map_mut_with<F: FnMut(&mut T, &T)>(&mut self, rhs: &Self, mut f: F) {
+        self.w.zip_mut_with(&rhs.w, |a, b| f(a, b));
         self.b.zip_mut_with(&rhs.b, f);
     }
 }

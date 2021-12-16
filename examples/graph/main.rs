@@ -105,14 +105,12 @@ impl App {
                     .title("Cost")
                     .style(Style::default().fg(Color::Gray))
                     .labels(vec![
-                        Span::raw("1e-5"),
-                        Span::raw("1e-4"),
                         Span::raw("0.01"),
                         Span::raw("0.1"),
                         Span::raw("1.0"),
                         Span::raw("10.0"),
                     ])
-                    .bounds([-5.0, 1.0]),
+                    .bounds([-2.0, 1.0]),
             );
         f.render_widget(chart, chunks[0]);
     }
