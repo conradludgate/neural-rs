@@ -4,9 +4,9 @@ pub mod cost;
 pub mod dense;
 pub mod derivative;
 pub mod initialisers;
+pub mod network;
 pub mod optimise;
 pub mod train;
-pub mod tuple;
 
 use rand::Rng;
 
@@ -67,7 +67,7 @@ pub trait Graph<F, InputShape>: Sized {
 
 //     #[test]
 //     fn test_grads() {
-//         let mut network: _ = tuple![
+//         let mut network= tuple![
 //             Dense::new(6, Xavier).with_activation(Sigmoid),
 //             Dense::new(4, Xavier).with_activation(Relu)
 //         ]
@@ -75,11 +75,11 @@ pub trait Graph<F, InputShape>: Sized {
 
 //         let mut rng = thread_rng();
 
-//         let input: _ = Array2::<f64>::from_shape_fn((8, 10), |_| rng.gen());
-//         let expected: _ = Array2::<f64>::from_shape_fn((4, 10), |_| rng.gen());
+//         let input= Array2::<f64>::from_shape_fn((8, 10), |_| rng.gen());
+//         let expected= Array2::<f64>::from_shape_fn((4, 10), |_| rng.gen());
 
-//         let grads: _ = network.get_grads(&input, &expected, &MSE).0;
-//         let expected_grads: _ = get_grads(&mut network, MSE, 1e-8, &input, &expected);
+//         let grads= network.get_grads(&input, &expected, &MSE).0;
+//         let expected_grads= get_grads(&mut network, MSE, 1e-8, &input, &expected);
 
 //         println!("{:?}", expected_grads);
 //         println!("{:?}", grads);
@@ -88,7 +88,7 @@ pub trait Graph<F, InputShape>: Sized {
 
 //     #[test]
 //     fn test_train() {
-//         let mut network: _ = tuple![
+//         let mut network= tuple![
 //             Dense::new(6, Xavier).with_activation(Sigmoid),
 //             Dense::new(4, Xavier).with_activation(Sigmoid)
 //         ]
@@ -96,11 +96,11 @@ pub trait Graph<F, InputShape>: Sized {
 
 //         let mut rng = thread_rng();
 
-//         let input: _ = Array2::<f64>::from_shape_fn((8, 10), |_| rng.gen());
-//         let expected: _ = Array2::<f64>::from_shape_fn((4, 10), |_| rng.gen());
+//         let input= Array2::<f64>::from_shape_fn((8, 10), |_| rng.gen());
+//         let expected= Array2::<f64>::from_shape_fn((4, 10), |_| rng.gen());
 
 //         let cost1 = MSE.cost(&network.exec(&input), &expected);
-//         let grads: _ = get_grads(&mut network, MSE, 1e-8, &input, &expected);
+//         let grads= get_grads(&mut network, MSE, 1e-8, &input, &expected);
 //         let mut optimiser = SGD::new(0.1);
 //         optimiser.optimise(&mut network, grads);
 //         let cost2 = MSE.cost(&network.exec(&input), &expected);

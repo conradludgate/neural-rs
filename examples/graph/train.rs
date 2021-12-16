@@ -3,9 +3,10 @@ use linear_networks::{
     cost::mse::MSE,
     dense::Dense,
     initialisers::Xavier,
+    net,
     optimise::adam::Adam,
     train::Train,
-    tuple, Graph, Shaped,
+    Graph, Shaped,
 };
 use ndarray::Array2;
 use std::sync::mpsc;
@@ -20,7 +21,7 @@ pub fn train(tx: mpsc::Sender<Event>) {
     // Create a new compute graph which uses three Dense components
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
-    let network: _ = tuple![
+    let network = net![
         Dense::new(16)
             .with_initialiser(Xavier)
             .with_activation(Relu),
@@ -34,8 +35,8 @@ pub fn train(tx: mpsc::Sender<Event>) {
     .input_shape(28 * 28);
 
     // New trainer with mean squared error cost function
-    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
-    let mut trainer: _ = Train {
+    let optimiser = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
+    let mut trainer = Train {
         graph: network,
         optimiser,
         cost: MSE,

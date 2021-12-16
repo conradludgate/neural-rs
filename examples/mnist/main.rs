@@ -5,9 +5,10 @@ use linear_networks::{
     cost::mse::MSE,
     dense::Dense,
     initialisers::Xavier,
-    optimise::{adam::Adam},
+    net,
+    optimise::adam::Adam,
     train::{Regularisation, Train},
-    tuple, Graph, GraphExec, Shaped,
+    Graph, GraphExec, Shaped,
 };
 use ndarray::{Array2, Axis};
 
@@ -19,7 +20,7 @@ fn main() {
     // Create a new compute graph which uses three Dense components
     // With the input having size 28*28 and the output having size 10
     // Initialise it with uniform random data
-    let network: _ = tuple![
+    let network = net![
         Dense::new(16)
             .with_initialiser(Xavier)
             .with_activation(Relu),
@@ -34,10 +35,10 @@ fn main() {
 
     // New trainer with mean squared error cost function and
     // stochastic gradient descent optimisation (alpha=0.1)
-    // let mut trainer: _ = Train::new(network, MSE, SGD::new(0.01));
+    // let mut trainer= Train::new(network, MSE, SGD::new(0.01));
 
-    let optimiser: _ = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
-    let mut trainer: _ = Train {
+    let optimiser = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
+    let mut trainer = Train {
         graph: network,
         optimiser,
         cost: MSE,

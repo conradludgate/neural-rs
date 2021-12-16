@@ -25,7 +25,7 @@ pub struct Events {
     input_handle: thread::JoinHandle<()>,
     ignore_exit_key: Arc<AtomicBool>,
     tick_handle: thread::JoinHandle<()>,
-    train_handle: thread::JoinHandle<()>
+    train_handle: thread::JoinHandle<()>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -56,15 +56,13 @@ impl Events {
             let ignore_exit_key = ignore_exit_key.clone();
             thread::spawn(move || {
                 let stdin = io::stdin();
-                for evt in stdin.keys() {
-                    if let Ok(key) = evt {
-                        if let Err(err) = tx.send(Event::Input(key)) {
-                            eprintln!("{}", err);
-                            return;
-                        }
-                        if !ignore_exit_key.load(Ordering::Relaxed) && key == config.exit_key {
-                            return;
-                        }
+                for key in stdin.keys().flatten() {
+                    if let Err(err) = tx.send(Event::Input(key)) {
+                        eprintln!("{}", err);
+                        return;
+                    }
+                    if !ignore_exit_key.load(Ordering::Relaxed) && key == config.exit_key {
+                        return;
                     }
                 }
             })

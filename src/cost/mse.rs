@@ -11,7 +11,7 @@ where
 {
     type Inner = F;
     fn cost(&self, input: &Array1<F>, expected: &Array1<F>) -> Self::Inner {
-        let diff: _ = input - expected;
+        let diff = input - expected;
         diff.dot(&diff)
     }
     fn diff(&self, input: &Array1<F>, expected: &Array1<F>) -> Array1<F> {
@@ -27,7 +27,7 @@ where
 {
     type Inner = F;
     fn cost(&self, input: &Array2<F>, expected: &Array2<F>) -> Self::Inner {
-        let diff: _ = input - expected;
+        let diff = input - expected;
         diff.t().dot(&diff).mean().unwrap()
     }
     fn diff(&self, input: &Array2<F>, expected: &Array2<F>) -> Array2<F> {

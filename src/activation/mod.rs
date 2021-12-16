@@ -59,15 +59,15 @@ where
 {
     type State = Linear<G::State, L::State>;
     fn forward(&self, input: Input) -> (Self::State, Self::Output) {
-        let (graph, output): _ = self.graph.forward(input);
-        let (linear, output): _ = self.linear.forward(output);
+        let (graph, output) = self.graph.forward(input);
+        let (linear, output) = self.linear.forward(output);
         (Linear { graph, linear }, output)
     }
 
     fn back(&self, state: Self::State, d_output: Self::Output) -> (Input, Self) {
         let Linear { linear, graph } = state;
-        let (d_output, linear): _ = self.linear.back(linear, d_output);
-        let (d_input, graph): _ = self.graph.back(graph, d_output);
+        let (d_output, linear) = self.linear.back(linear, d_output);
+        let (d_input, graph) = self.graph.back(graph, d_output);
         (d_input, Linear { linear, graph })
     }
 }
@@ -115,7 +115,7 @@ where
             linear: shape.linear,
         }
     }
-    fn iter(shape: Self::Shape, i: impl Iterator<Item=F>) -> Self {
+    fn iter(shape: Self::Shape, i: impl Iterator<Item = F>) -> Self {
         Linear {
             graph: G::iter(shape.graph, i),
             linear: shape.linear,

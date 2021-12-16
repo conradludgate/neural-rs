@@ -5,4 +5,3 @@ pub trait Cost<T> {
     fn cost(&self, output: &T, expected: &T) -> Self::Inner;
     fn diff(&self, output: &T, expected: &T) -> T;
 }
-

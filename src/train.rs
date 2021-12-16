@@ -18,9 +18,9 @@ pub trait GraphExecTrain<Input>: GraphExec<Input> + Sized {
     where
         C: Cost<Self::Output>,
     {
-        let (state, output): _ = self.forward(input);
+        let (state, output) = self.forward(input);
 
-        let d_output: _ = cost.diff(&output, &expected);
+        let d_output = cost.diff(&output, &expected);
         (self.back(state, d_output).1, cost.cost(&output, &expected))
     }
 }
@@ -103,7 +103,7 @@ impl<F, C, O, G> Train<F, C, O, G> {
             let mut shuffled_inputs = Array::uninitialized(input_dim);
             let mut shuffled_expected = Array::uninitialized(expected_dim);
 
-            for (i, &j) in indicies.into_iter().enumerate() {
+            for (i, &j) in indicies.iter().enumerate() {
                 shuffled_inputs
                     .index_axis_mut(Axis(0), i)
                     .assign(&inputs.index_axis(Axis(0), j));
@@ -184,19 +184,19 @@ where
         let mut cost = F::zero();
         match self {
             Regularisation::L1(a) => {
-                grads.map_mut_with(&graph, move |g, &x| {
+                grads.map_mut_with(graph, move |g, &x| {
                     cost = cost + x.abs() * a;
                     *g = *g + x.signum() * a;
                 });
             }
             Regularisation::L2(a) => {
-                grads.map_mut_with(&graph, move |g, &x| {
+                grads.map_mut_with(graph, move |g, &x| {
                     cost = cost + x * x * a;
                     *g = *g + (x + x) * a;
                 });
             }
             Regularisation::L1_2(a, b) => {
-                grads.map_mut_with(&graph, move |g, &x| {
+                grads.map_mut_with(graph, move |g, &x| {
                     cost = cost + x.abs() * a + x * x * b;
                     *g = *g + x.signum() * a + (x + x) * b;
                 });

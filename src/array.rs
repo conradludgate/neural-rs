@@ -2,7 +2,7 @@ use ndarray::{Array, Array2, ArrayBase, Data, DataShared, Dimension, Ix2, Linalg
 
 pub fn compact_shape(shape: &[usize]) -> (usize, usize) {
     let (last, rest) = shape.split_last().unwrap();
-    (rest.into_iter().product(), *last)
+    (rest.iter().product(), *last)
 }
 
 pub fn compact_front<S, F, D>(a: ArrayBase<S, D>) -> ArrayBase<S, Ix2>

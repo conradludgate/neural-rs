@@ -5,7 +5,10 @@ use crate::{
     train::GraphExecTrain,
     Graph, GraphExec, Mappable, Shaped,
 };
-use ndarray::{Array, Array1, Array2, ArrayBase, Axis, Data, Dim, Dimension, LinalgScalar, RawData, RemoveAxis, ScalarOperand};
+use ndarray::{
+    Array, Array1, Array2, ArrayBase, Axis, Data, Dim, Dimension, LinalgScalar, RawData,
+    RemoveAxis, ScalarOperand,
+};
 use num_traits::{FromPrimitive, One, Zero};
 use rand::{distributions::Distribution, Rng};
 
@@ -70,7 +73,7 @@ impl<F, S, D> GraphExec<ArrayBase<S, D>> for DenseState<F>
 where
     F: LinalgScalar,
     D: Dimension,
-    S: RawData<Elem=F> + Data,
+    S: RawData<Elem = F> + Data,
 {
     type Output = Array<F, D>;
 
