@@ -4,9 +4,7 @@ use rand::Rng;
 pub mod relu;
 pub mod sigmoid;
 
-pub trait Activation<G>: Sized {
-    fn into_activation(self, g: G) -> Linear<G, Self>;
-}
+pub trait Activation {}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Linear<G, L> {

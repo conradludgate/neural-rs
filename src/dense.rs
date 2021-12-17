@@ -34,8 +34,8 @@ impl<I> Dense<I> {
         }
     }
 
-    pub fn with_activation<A: Activation<Self>>(self, a: A) -> Linear<Self, A> {
-        a.into_activation(self)
+    pub fn with_activation<A: Activation>(self, a: A) -> Linear<Self, A> {
+        Linear::new(self, a)
     }
 }
 

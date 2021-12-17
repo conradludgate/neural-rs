@@ -2,15 +2,11 @@ use crate::{train::GraphExecTrain, GraphExec};
 use ndarray::{Array, Dimension, LinalgScalar, ScalarOperand};
 use num_traits::Float;
 
-use super::{Activation, Linear};
+use super::Activation;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Sigmoid;
-impl<G> Activation<G> for Sigmoid {
-    fn into_activation(self, g: G) -> Linear<G, Self> {
-        Linear::new(g, self)
-    }
-}
+impl Activation for Sigmoid {}
 
 impl<F, D> GraphExec<Array<F, D>> for Sigmoid
 where

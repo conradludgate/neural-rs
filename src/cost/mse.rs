@@ -3,6 +3,7 @@ use ndarray::{Array1, Array2, LinalgScalar, ScalarOperand};
 use num_traits::FromPrimitive;
 
 #[derive(Debug, Copy, Clone)]
+/// Mean Squared Error cost function.
 pub struct MSE;
 
 impl<F> Cost<Array1<F>> for MSE
