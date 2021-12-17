@@ -8,9 +8,9 @@ use linear_networks::{
     net,
     optimise::adam::Adam,
     train::{Regularisation, Train},
-    Graph, GraphExec, Shaped,
+    GraphExec, Shaped, HDF5, Graph,
 };
-use ndarray::{Array2, Axis};
+use ndarray::{Array2, AssignElem, Axis};
 
 fn main() {
     // Load MNIST data set
@@ -30,16 +30,20 @@ fn main() {
         Dense::output_size(10)
             .with_initialiser(Xavier)
             .with_activation(Sigmoid)
-    ]
-    .input_shape(28 * 28);
+    ];
+
+    let file = hdf5::File::open("mnist.h5").unwrap();
+    let graph = network.load(&file).unwrap();
+
+    // let graph = network.input_shape(28 * 28);
 
     // New trainer with mean squared error cost function and
     // stochastic gradient descent optimisation (alpha=0.1)
-    // let mut trainer= Train::new(network, MSE, SGD::new(0.01));
+    // let mut trainer = Train::new(network, MSE, SGD::new(0.01));
 
-    let optimiser = Adam::new(0.001, 0.9, 0.99, 1e-8, network.shape());
+    let optimiser = Adam::new(0.001, 0.9, 0.99, 1e-8, graph.shape());
     let mut trainer = Train {
-        graph: network,
+        graph,
         optimiser,
         cost: MSE,
         regularisation: Some(Regularisation::L2(0.01)),
@@ -57,35 +61,37 @@ fn main() {
         costs.push(dbg!(cost));
     }
 
-    let network = trainer.graph;
+    let graph = trainer.graph;
 
-    println!("network: {:?}", network);
+    // let file = hdf5::File::create("mnist.h5").unwrap();
+    // network.save(&graph, &file).unwrap();
+    // file.close().unwrap();
+
+    // println!("network: {:?}", network);
 
     let input = training_data.0.index_axis(Axis(0), 0);
     let expected = training_data.1.index_axis(Axis(0), 0);
 
-    let output = network.exec(input);
+    let output = graph.exec(input);
     println!("output: {:?}", output);
     println!("expected: {:?}", expected);
 }
 
 fn process_data(data: &parse::DataSet) -> (Array2<f32>, Array2<f32>) {
-    unsafe {
-        let data_len = data.images.len();
-        assert_eq!(data_len, data.labels.len());
+    let data_len = data.images.len();
+    assert_eq!(data_len, data.labels.len());
 
-        let mut input = Array2::uninitialized((data_len, 28 * 28));
-        let mut expected = Array2::zeros((data_len, 10));
+    let mut input = Array2::uninit((data_len, 28 * 28));
+    let mut expected = Array2::zeros((data_len, 10));
 
-        for (i, image) in data.images.iter().enumerate() {
-            for (j, &b) in image.iter().enumerate() {
-                input[(i, j)] = (b as f32) / 255.0;
-            }
+    for (i, image) in data.images.iter().enumerate() {
+        for (j, &b) in image.iter().enumerate() {
+            input[(i, j)].assign_elem((b as f32) / 255.0);
         }
-        for (i, &label) in data.labels.iter().enumerate() {
-            expected[(i, label as usize)] = 1.0;
-        }
-
-        (input, expected)
     }
+    for (i, &label) in data.labels.iter().enumerate() {
+        expected[(i, label as usize)] = 1.0;
+    }
+
+    unsafe { (input.assume_init(), expected) }
 }

@@ -5,10 +5,11 @@ use crate::{
     array::{compact_front, dot_front, dot_inner},
     initialisers::Initialiser,
     train::GraphExecTrain,
-    Graph, GraphExec, Mappable, Shaped,
+    Graph, GraphExec, Mappable, Shaped, HDF5,
 };
+use hdf5::H5Type;
 use ndarray::{
-    Array, Array1, Array2, ArrayBase, Axis, Data, Dim, Dimension, LinalgScalar, RawData,
+    Array, Array1, Array2, ArrayBase, Axis, Data, Dim, DimMax, Dimension, Ix1, LinalgScalar,
     RemoveAxis, ScalarOperand,
 };
 use num_traits::{FromPrimitive, One, Zero};
@@ -80,22 +81,22 @@ pub struct DenseState<F> {
 impl<F, S, D> GraphExec<ArrayBase<S, D>> for DenseState<F>
 where
     F: LinalgScalar,
-    D: Dimension,
-    S: RawData<Elem = F> + Data,
+    D: Dimension + DimMax<Ix1, Output = D>,
+    S: Data<Elem = F>,
 {
     type Output = Array<F, D>;
 
     fn exec(&self, input: ArrayBase<S, D>) -> Self::Output {
-        dot_inner(input, &self.w.view()) + &self.b
+        dot_inner(input, &self.w.view()) + self.b.view()
     }
 }
 
 impl<F, D> GraphExecTrain<Array<F, D>> for DenseState<F>
 where
     F: LinalgScalar + FromPrimitive + ScalarOperand,
-    D: Dimension + RemoveAxis,
+    D: Dimension + DimMax<Ix1, Output = D> + RemoveAxis,
 {
-    type State = Array<F, D>;
+    type State = Self::Output;
     fn forward(&self, input: Array<F, D>) -> (Self::State, Self::Output) {
         (input.clone(), self.exec(input))
     }
@@ -153,5 +154,29 @@ where
             w: Array2::from_shape_fn(shape, |_| i.next().unwrap()),
             b: Array1::from_shape_fn(shape[1], |_| i.next().unwrap()),
         }
+    }
+}
+
+impl<F: H5Type, I> HDF5<F, usize> for Dense<I>
+where
+    I: Initialiser<F, (usize, usize)>,
+{
+    fn save(&self, state: &Self::State, group: &hdf5::Group) -> hdf5::Result<()> {
+        group
+            .new_dataset_builder()
+            .with_data(state.w.view())
+            .create("weights")?;
+        group
+            .new_dataset_builder()
+            .with_data(state.b.view())
+            .create("bias")?;
+        Ok(())
+    }
+
+    fn load(&self, group: &hdf5::Group) -> hdf5::Result<Self::State> {
+        let w = group.dataset("weights")?.read()?;
+        let b = group.dataset("bias")?.read()?;
+
+        Ok(DenseState { w, b })
     }
 }

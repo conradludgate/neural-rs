@@ -1,6 +1,10 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![allow(clippy::module_name_repetitions, clippy::missing_panics_doc)]
+#![allow(
+    clippy::module_name_repetitions,
+    clippy::missing_panics_doc,
+    clippy::missing_errors_doc
+)]
 
 pub mod activation;
 mod array;
@@ -12,6 +16,7 @@ pub mod network;
 pub mod optimise;
 pub mod train;
 
+use hdf5::H5Type;
 use rand::Rng;
 
 pub trait Mappable<T> {
@@ -54,6 +59,11 @@ pub trait Graph<F, InputShape>: Sized {
 
     /// Use to initialise with a predefined random source
     fn init_with_random(self, rng: &mut impl Rng, input_shape: InputShape) -> Self::State;
+}
+
+pub trait HDF5<F: H5Type, InputShape>: Graph<F, InputShape> {
+    fn save(&self, state: &Self::State, group: &hdf5::Group) -> hdf5::Result<()>;
+    fn load(&self, group: &hdf5::Group) -> hdf5::Result<Self::State>;
 }
 
 // #[cfg(test)]

@@ -93,27 +93,30 @@ impl<F, C, O, G> Train<F, C, O, G> {
         D1: Dimension + RemoveAxis,
         D2: Dimension + RemoveAxis,
     {
+        let mut input_dim = inputs.raw_dim();
+        input_dim.as_array_view_mut()[0] = indicies.len();
+
+        let mut expected_dim = expected.raw_dim();
+        expected_dim.as_array_view_mut()[0] = indicies.len();
+
+        let mut shuffled_inputs = Array::uninit(input_dim);
+        let mut shuffled_expected = Array::uninit(expected_dim);
+
+        for (i, &j) in indicies.iter().enumerate() {
+            inputs
+                .index_axis(Axis(0), j)
+                .assign_to(shuffled_inputs.index_axis_mut(Axis(0), i));
+
+            expected
+                .index_axis(Axis(0), j)
+                .assign_to(shuffled_expected.index_axis_mut(Axis(0), i));
+        }
+
         unsafe {
-            let mut input_dim = inputs.raw_dim();
-            input_dim.as_array_view_mut()[0] = indicies.len();
-
-            let mut expected_dim = expected.raw_dim();
-            expected_dim.as_array_view_mut()[0] = indicies.len();
-
-            let mut shuffled_inputs = Array::uninitialized(input_dim);
-            let mut shuffled_expected = Array::uninitialized(expected_dim);
-
-            for (i, &j) in indicies.iter().enumerate() {
-                shuffled_inputs
-                    .index_axis_mut(Axis(0), i)
-                    .assign(&inputs.index_axis(Axis(0), j));
-
-                shuffled_expected
-                    .index_axis_mut(Axis(0), i)
-                    .assign(&expected.index_axis(Axis(0), j));
-            }
-
-            self.train(shuffled_inputs, shuffled_expected)
+            self.train(
+                shuffled_inputs.assume_init(),
+                shuffled_expected.assume_init(),
+            )
         }
     }
 

@@ -1,4 +1,5 @@
-use crate::{train::GraphExecTrain, Graph, GraphExec, Mappable, Shaped};
+use crate::{train::GraphExecTrain, Graph, GraphExec, Mappable, Shaped, HDF5};
+use hdf5::H5Type;
 use rand::Rng;
 
 pub mod relu;
@@ -118,5 +119,18 @@ where
             graph: G::iter(shape.graph, i),
             linear: shape.linear,
         }
+    }
+}
+
+impl<F: H5Type, I, G: HDF5<F, I>, L: Clone> HDF5<F, I> for Linear<G, L> {
+    fn save(&self, state: &Self::State, group: &hdf5::Group) -> hdf5::Result<()> {
+        self.graph.save(&state.graph, group)
+    }
+
+    fn load(&self, group: &hdf5::Group) -> hdf5::Result<Self::State> {
+        Ok(Linear {
+            graph: self.graph.load(group)?,
+            linear: self.linear.clone(),
+        })
     }
 }

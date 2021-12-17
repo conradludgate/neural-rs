@@ -1,4 +1,5 @@
-use crate::{train::GraphExecTrain, Graph, GraphExec, Mappable, Shaped};
+use crate::{train::GraphExecTrain, Graph, GraphExec, Mappable, Shaped, HDF5};
+use hdf5::H5Type;
 use rand::Rng;
 
 impl<I, G0, G1, F> Graph<F, I> for (G0, G1)
@@ -91,6 +92,25 @@ where
     }
     fn iter(shape: Self::Shape, mut i: impl Iterator<Item = F>) -> Self {
         (T::iter(shape.0, &mut i), U::iter(shape.1, &mut i))
+    }
+}
+
+impl<F: H5Type, I, T, U> HDF5<F, I> for (T, U)
+where
+    T: HDF5<F, I> + Graph<F, I>,
+    U: HDF5<F, T::OutputShape> + Graph<F, T::OutputShape>,
+{
+    fn save(&self, state: &Self::State, group: &hdf5::Group) -> hdf5::Result<()> {
+        self.0.save(&state.0, &group.create_group("0")?)?;
+        self.1.save(&state.1, &group.create_group("1")?)?;
+        Ok(())
+    }
+
+    fn load(&self, group: &hdf5::Group) -> hdf5::Result<Self::State> {
+        Ok((
+            self.0.load(&group.group("0")?)?,
+            self.1.load(&group.group("1")?)?,
+        ))
     }
 }
 
