@@ -8,7 +8,7 @@ use linear_networks::{
     net,
     optimise::adam::Adam,
     train::{Regularisation, Train},
-    GraphExec, Shaped, HDF5, Graph,
+    Graph, GraphExec, Shaped, HDF5,
 };
 use ndarray::{Array2, AssignElem, Axis};
 

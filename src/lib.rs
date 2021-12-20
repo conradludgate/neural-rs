@@ -15,6 +15,7 @@ pub mod initialisers;
 pub mod network;
 pub mod optimise;
 pub mod train;
+pub mod rnn;
 
 use hdf5::H5Type;
 use rand::Rng;

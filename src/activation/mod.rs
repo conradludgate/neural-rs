@@ -4,13 +4,15 @@ use rand::Rng;
 
 pub mod relu;
 pub mod sigmoid;
+pub mod softmax;
+pub mod tanh;
 
 pub trait Activation {}
 
 #[derive(Debug, Copy, Clone)]
 pub struct Linear<G, L> {
-    graph: G,
-    linear: L,
+    pub graph: G,
+    pub linear: L,
 }
 
 impl<G, L> Linear<G, L> {
